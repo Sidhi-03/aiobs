@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling>=1.18.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "llm-observability"
+version = "0.1.0"
+description = "Minimal, extensible LLM observability SDK (OpenAI supported)."
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+  { name = "LLM Observability Authors" }
+]
+keywords = ["llm", "observability", "tracing", "openai"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Libraries",
+]
+
+dependencies = [
+  "pydantic>=2",
+]
+
+[project.optional-dependencies]
+openai = [
+  "openai>=1.0.0,<2",
+]
+example = [
+  "python-dotenv>=1.0",
+]
+test = [
+  "pytest>=7",
+]
+
+[project.urls]
+Homepage = "https://github.com/"
+Repository = "https://github.com/"
+
+[tool.hatch.build]
+exclude = [
+  ".venv",
+  "example",
+  ".git",
+  "dist",
+  "build",
+]

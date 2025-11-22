@@ -1,0 +1,28 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.DS_Store
+venv/
+
+# Editors/IDE
+.idea/
+.vscode/
+
+# Packaging / build artifacts
+dist/
+build/
+*.egg-info/
+pip-wheel-metadata/
+
+# Test / tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+
+# Observability outputs
+llm_observability.json
+**/llm_observability.json
+tmp_*.json
