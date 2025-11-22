@@ -28,7 +28,7 @@ class Event(BaseModel):
     provider: str
     api: str
     request: Any
-    response: Any | None = None
+    response: Optional[Any] = None
     error: Optional[str] = Field(default=None)
     started_at: float
     ended_at: float
@@ -45,4 +45,3 @@ class ObservabilityExport(BaseModel):
     events: List[ObservedEvent]
     generated_at: float
     version: int = 1
-
