@@ -1,4 +1,4 @@
-# LLM Observability (minimal Python SDK)
+# aiobs
 
 A tiny, extensible observability layer for LLM calls. Add three lines around your code and get JSON traces for requests, responses, timings, and errors.
 
