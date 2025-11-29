@@ -59,6 +59,16 @@ from .models import (
 # Import exporter base classes (cloud-specific exporters use lazy imports)
 from .exporters.base import BaseExporter, ExportResult, ExportError
 
+# Import classifier base classes and models
+from .classifier import (
+    BaseClassifier,
+    ClassificationConfig,
+    ClassificationInput,
+    ClassificationResult,
+    ClassificationVerdict,
+    OpenAIClassifier,
+)
+
 # Global collector singleton, intentionally simple API
 observer = Collector()
 
@@ -74,6 +84,13 @@ __all__ = [
     "BaseExporter",
     "ExportResult",
     "ExportError",
+    # Classifier base classes and models
+    "BaseClassifier",
+    "ClassificationConfig",
+    "ClassificationInput",
+    "ClassificationResult",
+    "ClassificationVerdict",
+    "OpenAIClassifier",
     # Data models (for parsing/validation)
     "Session",
     "SessionMeta",

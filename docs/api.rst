@@ -106,3 +106,30 @@ Gemini API Models
    :members:
    :undoc-members:
    :show-inheritance:
+
+Classifiers
+-----------
+
+Base Classifier
+^^^^^^^^^^^^^^^
+
+.. automodule:: aiobs.classifier.base
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Classification Models
+^^^^^^^^^^^^^^^^^^^^^
+
+.. automodule:: aiobs.classifier.models.classification
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+OpenAI Classifier
+^^^^^^^^^^^^^^^^^
+
+.. automodule:: aiobs.classifier.openai.classifier
+   :members:
+   :undoc-members:
+   :show-inheritance:

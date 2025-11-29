@@ -15,6 +15,13 @@ Supported Providers
 - **OpenAI** — Chat Completions API (``openai>=1.0``)
 - **Google Gemini** — Generate Content API (``google-genai>=1.0``)
 
+Classifiers
+-----------
+
+Evaluate model response quality with built-in classifiers:
+
+- **OpenAIClassifier** — Uses OpenAI models to determine if responses are good, bad, or uncertain
+
 API Key
 -------
 
@@ -45,6 +52,7 @@ Contents
 
    getting_started
    usage
+   classifier
    architecture
 
 .. toctree::
