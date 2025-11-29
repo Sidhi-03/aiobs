@@ -5,6 +5,7 @@ from typing import Any, Callable, List, Optional
 from ..base import BaseProvider
 from .apis.base_api import BaseOpenAIAPIModule
 from .apis.chat_completions import ChatCompletionsAPI
+from .apis.embeddings import EmbeddingsAPI
 
 
 class OpenAIProvider(BaseProvider):
@@ -17,7 +18,7 @@ class OpenAIProvider(BaseProvider):
     def is_available(cls) -> bool:
         # Available if any sub-module is available
         try:
-            return ChatCompletionsAPI.is_available()
+            return ChatCompletionsAPI.is_available() or EmbeddingsAPI.is_available()
         except Exception:
             return False
 
@@ -28,6 +29,8 @@ class OpenAIProvider(BaseProvider):
         modules: List[BaseOpenAIAPIModule] = []
         if ChatCompletionsAPI.is_available():
             modules.append(ChatCompletionsAPI())
+        if EmbeddingsAPI.is_available():
+            modules.append(EmbeddingsAPI())
 
         for mod in modules:
             try:

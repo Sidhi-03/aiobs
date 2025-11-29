@@ -1,5 +1,6 @@
 from .base import BaseOpenAIRequest, BaseOpenAIResponse
 from .chat_completions import Message, ChatCompletionsRequest, ChatCompletionsResponse
+from .embeddings import EmbeddingsRequest, EmbeddingsResponse, EmbeddingData
 
 __all__ = [
     "BaseOpenAIRequest",
@@ -7,4 +8,7 @@ __all__ = [
     "Message",
     "ChatCompletionsRequest",
     "ChatCompletionsResponse",
+    "EmbeddingsRequest",
+    "EmbeddingsResponse",
+    "EmbeddingData",
 ]
