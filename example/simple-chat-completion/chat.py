@@ -28,7 +28,14 @@ def main() -> None:
     ]
 
     # Start observability, make the LLM call, then end and flush
-    observer.observe()
+    observer.observe(
+        session_name="simple-chat-completion",
+        labels={
+            "environment": "development",
+            "example": "simple_chat",
+            "provider": "openai",
+        }
+    )
 
     completion = client.chat.completions.create(
         model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),

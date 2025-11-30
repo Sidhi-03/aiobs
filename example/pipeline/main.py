@@ -31,7 +31,16 @@ def main(query: Optional[str] = None, use_gcs: bool = False) -> None:
     model = default_model()
 
     # Start a single observability session for the whole pipeline
-    observer.observe(session_name="pipeline-example", api_key=os.getenv("AIOBS_API_KEY"))
+    observer.observe(
+        session_name="pipeline-example",
+        api_key=os.getenv("AIOBS_API_KEY"),
+        labels={
+            "environment": "development",
+            "example": "pipeline",
+            "provider": "openai",
+            "pipeline_type": "research_summarize_critique",
+        }
+    )
 
     try:
         q = query or "In one sentence, explain what an API is."

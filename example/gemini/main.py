@@ -93,8 +93,16 @@ def multi_turn_conversation():
 
 def main():
     """Run all examples with observability enabled."""
-    # Start observability session
-    session_id = observer.observe(session_name="gemini-example")
+    # Start observability session with labels for filtering
+    session_id = observer.observe(
+        session_name="gemini-example",
+        labels={
+            "environment": "development",
+            "example": "gemini_multi_turn",
+            "provider": "gemini",
+            "model": "gemini-2.0-flash-001",
+        }
+    )
     print(f"Started observability session: {session_id}\n")
 
     try:
