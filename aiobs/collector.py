@@ -4,6 +4,8 @@ import contextvars
 import json
 import logging
 import os
+import platform
+import re
 import threading
 import time
 import uuid
@@ -32,6 +34,105 @@ _current_span_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar
     "_current_span_id", default=None
 )
 
+# Label validation constants
+LABEL_KEY_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,62}$")
+LABEL_VALUE_MAX_LENGTH = 256
+LABEL_MAX_COUNT = 64
+LABEL_RESERVED_PREFIX = "aiobs_"
+LABEL_ENV_PREFIX = "AIOBS_LABEL_"
+
+# SDK version for system labels
+SDK_VERSION = "0.1.0"
+
+
+def _validate_label_key(key: str) -> None:
+    """Validate a label key format.
+    
+    Args:
+        key: The label key to validate.
+        
+    Raises:
+        ValueError: If the key is invalid.
+    """
+    if not isinstance(key, str):
+        raise ValueError(f"Label key must be a string, got {type(key).__name__}")
+    if key.startswith(LABEL_RESERVED_PREFIX):
+        raise ValueError(f"Label key '{key}' uses reserved prefix '{LABEL_RESERVED_PREFIX}'")
+    if not LABEL_KEY_PATTERN.match(key):
+        raise ValueError(
+            f"Label key '{key}' is invalid. Keys must match pattern ^[a-z][a-z0-9_]{{0,62}}$"
+        )
+
+
+def _validate_label_value(value: str, key: str = "") -> None:
+    """Validate a label value.
+    
+    Args:
+        value: The label value to validate.
+        key: The associated key (for error messages).
+        
+    Raises:
+        ValueError: If the value is invalid.
+    """
+    if not isinstance(value, str):
+        raise ValueError(f"Label value for '{key}' must be a string, got {type(value).__name__}")
+    if len(value) > LABEL_VALUE_MAX_LENGTH:
+        raise ValueError(
+            f"Label value for '{key}' exceeds maximum length of {LABEL_VALUE_MAX_LENGTH} characters"
+        )
+
+
+def _validate_labels(labels: Dict[str, str]) -> None:
+    """Validate a dictionary of labels.
+    
+    Args:
+        labels: The labels dictionary to validate.
+        
+    Raises:
+        ValueError: If any label is invalid or count exceeds limit.
+    """
+    if not isinstance(labels, dict):
+        raise ValueError(f"Labels must be a dictionary, got {type(labels).__name__}")
+    if len(labels) > LABEL_MAX_COUNT:
+        raise ValueError(f"Too many labels ({len(labels)}). Maximum allowed is {LABEL_MAX_COUNT}.")
+    for key, value in labels.items():
+        _validate_label_key(key)
+        _validate_label_value(value, key)
+
+
+def _get_env_labels() -> Dict[str, str]:
+    """Get labels from environment variables.
+    
+    Looks for variables prefixed with AIOBS_LABEL_ and converts them to labels.
+    E.g., AIOBS_LABEL_ENVIRONMENT=production -> {"environment": "production"}
+    
+    Returns:
+        Dictionary of labels from environment variables.
+    """
+    labels = {}
+    for key, value in os.environ.items():
+        if key.startswith(LABEL_ENV_PREFIX):
+            label_key = key[len(LABEL_ENV_PREFIX):].lower()
+            if label_key and LABEL_KEY_PATTERN.match(label_key):
+                labels[label_key] = value[:LABEL_VALUE_MAX_LENGTH]
+    return labels
+
+
+def _get_system_labels() -> Dict[str, str]:
+    """Get system-generated labels.
+    
+    Returns:
+        Dictionary of system labels (prefixed with aiobs_).
+    """
+    import socket
+    
+    return {
+        "aiobs_sdk_version": SDK_VERSION,
+        "aiobs_python_version": platform.python_version(),
+        "aiobs_hostname": socket.gethostname()[:LABEL_VALUE_MAX_LENGTH],
+        "aiobs_os": platform.system().lower(),
+    }
+
 
 class Collector:
     """Simple, global-style collector with pluggable provider instrumentation.
@@ -57,6 +158,7 @@ class Collector:
         self,
         session_name: Optional[str] = None,
         api_key: Optional[str] = None,
+        labels: Optional[Dict[str, str]] = None,
     ) -> str:
         """Enable instrumentation (once) and start a new session.
 
@@ -64,11 +166,17 @@ class Collector:
             session_name: Optional name for the session.
             api_key: API key (aiobs_sk_...) for usage tracking with shepherd-server.
                      Can also be set via AIOBS_API_KEY environment variable.
+            labels: Optional dictionary of key-value labels for filtering and
+                    categorization. Keys must be lowercase alphanumeric with
+                    underscores (matching ^[a-z][a-z0-9_]{0,62}$). Values are
+                    UTF-8 strings (max 256 chars). Labels from AIOBS_LABEL_*
+                    environment variables are automatically merged.
 
         Returns a session id.
 
         Raises:
-            ValueError: If no API key is provided or the API key is invalid.
+            ValueError: If no API key is provided, the API key is invalid,
+                        or labels contain invalid keys/values.
             RuntimeError: If unable to connect to shepherd server.
         """
         with self._lock:
@@ -87,6 +195,14 @@ class Collector:
                 self._instrumented = True
                 self._install_instrumentation()
 
+            # Build merged labels: system < env vars < explicit
+            merged_labels: Dict[str, str] = {}
+            merged_labels.update(_get_system_labels())
+            merged_labels.update(_get_env_labels())
+            if labels:
+                _validate_labels(labels)
+                merged_labels.update(labels)
+
             session_id = str(uuid.uuid4())
             now = _now()
             self._sessions[session_id] = ObsSession(
@@ -95,6 +211,7 @@ class Collector:
                 started_at=now,
                 ended_at=None,
                 meta=ObsSessionMeta(pid=os.getpid(), cwd=os.getcwd()),
+                labels=merged_labels if merged_labels else None,
             )
             self._events[session_id] = []
             self._active_session = session_id
@@ -204,6 +321,122 @@ class Collector:
             self._events.clear()
             self._active_session = None
             return out_path
+
+    def set_labels(
+        self,
+        labels: Dict[str, str],
+        merge: bool = True,
+    ) -> None:
+        """Set or update labels for the current session.
+
+        Args:
+            labels: Dictionary of labels to set.
+            merge: If True, merge with existing labels. If False, replace all
+                   user labels (system labels are preserved).
+
+        Raises:
+            RuntimeError: If no active session.
+            ValueError: If labels contain invalid keys or values.
+        """
+        with self._lock:
+            if not self._active_session:
+                raise RuntimeError("No active session. Call observe() first.")
+
+            _validate_labels(labels)
+
+            session = self._sessions[self._active_session]
+            current_labels = dict(session.labels) if session.labels else {}
+
+            if merge:
+                current_labels.update(labels)
+            else:
+                # Preserve system labels, replace user labels
+                system_labels = {k: v for k, v in current_labels.items() if k.startswith(LABEL_RESERVED_PREFIX)}
+                system_labels.update(labels)
+                current_labels = system_labels
+
+            # Check total count after merge
+            if len(current_labels) > LABEL_MAX_COUNT:
+                raise ValueError(
+                    f"Too many labels ({len(current_labels)}). Maximum allowed is {LABEL_MAX_COUNT}."
+                )
+
+            self._sessions[self._active_session] = session.model_copy(
+                update={"labels": current_labels}
+            )
+
+    def add_label(self, key: str, value: str) -> None:
+        """Add a single label to the current session.
+
+        Args:
+            key: Label key (lowercase alphanumeric with underscores).
+            value: Label value (UTF-8 string, max 256 chars).
+
+        Raises:
+            RuntimeError: If no active session.
+            ValueError: If key or value is invalid.
+        """
+        with self._lock:
+            if not self._active_session:
+                raise RuntimeError("No active session. Call observe() first.")
+
+            _validate_label_key(key)
+            _validate_label_value(value, key)
+
+            session = self._sessions[self._active_session]
+            current_labels = dict(session.labels) if session.labels else {}
+
+            # Check if adding would exceed limit
+            if key not in current_labels and len(current_labels) >= LABEL_MAX_COUNT:
+                raise ValueError(
+                    f"Cannot add label. Maximum of {LABEL_MAX_COUNT} labels already reached."
+                )
+
+            current_labels[key] = value
+            self._sessions[self._active_session] = session.model_copy(
+                update={"labels": current_labels}
+            )
+
+    def remove_label(self, key: str) -> None:
+        """Remove a label from the current session.
+
+        Args:
+            key: Label key to remove.
+
+        Raises:
+            RuntimeError: If no active session.
+            ValueError: If trying to remove a system label.
+        """
+        with self._lock:
+            if not self._active_session:
+                raise RuntimeError("No active session. Call observe() first.")
+
+            if key.startswith(LABEL_RESERVED_PREFIX):
+                raise ValueError(f"Cannot remove system label '{key}'")
+
+            session = self._sessions[self._active_session]
+            if session.labels and key in session.labels:
+                current_labels = dict(session.labels)
+                del current_labels[key]
+                self._sessions[self._active_session] = session.model_copy(
+                    update={"labels": current_labels if current_labels else None}
+                )
+
+    def get_labels(self) -> Dict[str, str]:
+        """Get all labels for the current session.
+
+        Returns:
+            Dictionary of current labels (empty dict if none).
+
+        Raises:
+            RuntimeError: If no active session.
+        """
+        with self._lock:
+            if not self._active_session:
+                raise RuntimeError("No active session. Call observe() first.")
+
+            session = self._sessions[self._active_session]
+            return dict(session.labels) if session.labels else {}
 
     # Internal API
     def _install_instrumentation(self) -> None:

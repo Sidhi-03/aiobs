@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -16,6 +16,7 @@ class Session(BaseModel):
     started_at: float
     ended_at: Optional[float] = Field(default=None)
     meta: SessionMeta
+    labels: Optional[Dict[str, str]] = Field(default=None)
 
 
 class Callsite(BaseModel):

@@ -1,6 +1,107 @@
 Usage
 =====
 
+Session Labels
+--------------
+
+Add labels to sessions for filtering and categorization in enterprise dashboards::
+
+    from aiobs import observer
+
+    observer.observe(
+        session_name="my-session",
+        labels={
+            "environment": "production",
+            "team": "ml-platform",
+            "project": "recommendation-engine",
+            "version": "v2.3.1",
+        }
+    )
+
+    # ... your LLM calls ...
+
+    observer.end()
+    observer.flush()
+
+Labels are key-value string pairs that enable:
+
+- **Dashboard filtering**: Filter sessions by environment, team, project, etc.
+- **Cost attribution**: Track usage by team or project
+- **Comparison**: Compare metrics across environments (prod vs staging)
+
+Label Constraints
+^^^^^^^^^^^^^^^^^
+
+.. list-table::
+   :header-rows: 1
+
+   * - Constraint
+     - Specification
+   * - Key format
+     - Lowercase alphanumeric with underscores (``^[a-z][a-z0-9_]{0,62}$``)
+   * - Value format
+     - UTF-8 string, max 256 characters
+   * - Max labels
+     - 64 per session
+   * - Reserved prefix
+     - ``aiobs_`` (used for system labels)
+
+Dynamic Label Updates
+^^^^^^^^^^^^^^^^^^^^^
+
+Update labels during an active session::
+
+    from aiobs import observer
+
+    observer.observe(labels={"environment": "staging"})
+
+    # Add a single label
+    observer.add_label("user_tier", "enterprise")
+
+    # Update multiple labels (merge with existing)
+    observer.set_labels({"experiment_id": "exp-42", "feature_flag": "new_model"})
+
+    # Replace all user labels (system labels preserved)
+    observer.set_labels({"environment": "production"}, merge=False)
+
+    # Remove a label
+    observer.remove_label("experiment_id")
+
+    # Get current labels
+    labels = observer.get_labels()
+    print(labels)  # {'environment': 'production', 'aiobs_sdk_version': '0.1.0', ...}
+
+    observer.end()
+    observer.flush()
+
+Environment Variable Labels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Labels can be auto-populated from environment variables::
+
+    # Set in shell or .env
+    export AIOBS_LABEL_ENVIRONMENT=production
+    export AIOBS_LABEL_TEAM=ml-platform
+    export AIOBS_LABEL_SERVICE=api-gateway
+
+These are automatically merged with explicit labels (explicit takes precedence)::
+
+    # AIOBS_LABEL_ENVIRONMENT=staging is set in env
+
+    observer.observe(labels={"environment": "production"})
+    labels = observer.get_labels()
+    print(labels["environment"])  # "production" (explicit overrides env)
+
+System Labels
+^^^^^^^^^^^^^
+
+The following labels are automatically added to every session:
+
+- ``aiobs_sdk_version``: SDK version
+- ``aiobs_python_version``: Python runtime version
+- ``aiobs_hostname``: Machine hostname
+- ``aiobs_os``: Operating system
+
 Simple Chat Completions (OpenAI)
 --------------------------------
 
@@ -233,6 +334,14 @@ By default, ``observer.flush()`` writes ``./llm_observability.json``. Override w
 
 What Gets Captured
 ------------------
+
+For each session:
+
+- **Session ID**: Unique identifier
+- **Session name**: Optional custom name
+- **Labels**: Key-value pairs for filtering (user-defined + system labels)
+- **Metadata**: Process ID, working directory
+- **Timing**: start/end timestamps
 
 For each LLM API call:
 

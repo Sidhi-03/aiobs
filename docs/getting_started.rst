@@ -39,6 +39,16 @@ You can also pass the API key directly when starting a session::
 
     observer.observe(api_key="aiobs_sk_your_key_here")
 
+You can add labels for filtering in enterprise dashboards::
+
+    observer.observe(
+        api_key="aiobs_sk_your_key_here",
+        labels={
+            "environment": "production",
+            "team": "ml-platform",
+        }
+    )
+
 Configure Provider Credentials
 ------------------------------
 

@@ -174,8 +174,15 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # Start observability session
-    observer.observe(session_name="observe-decorator-demo")
+    # Start observability session with labels
+    observer.observe(
+        session_name="observe-decorator-demo",
+        labels={
+            "environment": "development",
+            "example": "observe_decorator",
+            "demo_type": "function_tracing",
+        }
+    )
     try:
         main()
     except Exception as e:
@@ -194,8 +201,17 @@ if __name__ == "__main__":
     with open(out_path) as f:
         data = json.load(f)
 
-    print(f"\nSession: {data['sessions'][0]['name']}")
-    print(f"Total function events: {len(data['function_events'])}")
+    session = data['sessions'][0]
+    print(f"\nSession: {session['name']}")
+    
+    # Show labels
+    if session.get('labels'):
+        print("\nLabels:")
+        for key, value in session['labels'].items():
+            if not key.startswith('aiobs_'):  # Skip system labels for brevity
+                print(f"  {key}: {value}")
+    
+    print(f"\nTotal function events: {len(data['function_events'])}")
     print("\nCaptured traces:")
     for ev in data["function_events"]:
         error_marker = " [ERROR]" if ev.get("error") else ""

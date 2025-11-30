@@ -58,6 +58,30 @@ You can also pass the API key directly:
 observer.observe(api_key="aiobs_sk_your_key_here")
 ```
 
+### Session Labels
+
+Add labels for filtering in enterprise dashboards:
+
+```python
+observer.observe(
+    labels={
+        "environment": "production",
+        "team": "ml-platform",
+        "project": "recommendation-engine",
+    }
+)
+```
+
+Labels can also be set via environment variables (`AIOBS_LABEL_*`) and updated dynamically during a session:
+
+```python
+# Dynamic label updates
+observer.add_label("user_tier", "enterprise")
+observer.set_labels({"experiment_id": "exp-42"})
+observer.remove_label("experiment_id")
+labels = observer.get_labels()
+```
+
 By default, events flush to `./llm_observability.json`. Override with `LLM_OBS_OUT=/path/to/file.json`.
 
 ## Provider Examples
@@ -233,7 +257,7 @@ The JSON output will include:
 
 Internally, the SDK structures data with Pydantic models (v2):
 
-- `aiobs.Session` – Session metadata
+- `aiobs.Session` – Session metadata (id, name, labels, timestamps)
 - `aiobs.Event` – LLM provider call event
 - `aiobs.FunctionEvent` – Decorated function trace event
 - `aiobs.ObservedEvent` (Event + `session_id`)
