@@ -436,53 +436,6 @@ Open `docs/_build/html/index.html` in your browser.
 Docs auto-deploy via GitHub Actions:  
 👉 [https://neuralis-in.github.io/aiobs/](https://neuralis-in.github.io/aiobs/)
 
----
-
-## Troubleshooting
-
-### 1. Missing provider (OpenAI/Gemini)
-
-Install the provider extra:
-
-```bash
-pip install aiobs[openai]
-pip install aiobs[gemini]
-```
-
-### 2. Missing API key
-
-Set the API key:
-
-```bash
-export AIOBS_API_KEY=aiobs_sk_...
-```
-
-Or pass directly:
-
-```python
-observer.observe(api_key="...")
-```
-
-Get your key: [https://neuralis-in.github.io/shepherd/api-keys](https://neuralis-in.github.io/shepherd/api-keys)
-
-### 3. No JSON output
-
-You must call both methods:
-
-```python
-observer.end()
-observer.flush()
-```
-
-### 4. Async functions not traced
-
-Use the decorator:
-
-```python
-@observe
-async def my_function():
-    ...
-```
 
 
 ## About
