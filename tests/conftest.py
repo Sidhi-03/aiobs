@@ -33,5 +33,6 @@ def set_test_api_key(monkeypatch):
 def mock_shepherd_api():
     """Mock shepherd API calls to avoid network calls in tests."""
     with patch("aiobs.collector.Collector._validate_api_key"), \
-         patch("aiobs.collector.Collector._record_usage"):
+         patch("aiobs.collector.Collector._record_usage"), \
+         patch("aiobs.collector.Collector._flush_to_server"):
         yield
