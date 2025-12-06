@@ -97,6 +97,7 @@ __all__ = [
     "LatencyConsistencyConfig",
     "PIIDetectionConfig",
     "PIIType",
+    "ToxicityDetectionConfig",
     "HallucinationDetectionConfig",
     "SQLQueryValidatorConfig",
     "JailbreakDetectionConfig",
@@ -111,5 +112,6 @@ __all__ = [
     # Safety evaluators
     "PIIDetectionEval",
     "JailbreakDetectionEval",
+    "ToxicityDetectionEval",
 ]
 
