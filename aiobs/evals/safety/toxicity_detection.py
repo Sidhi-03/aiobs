@@ -69,7 +69,11 @@ class ToxicityDetectionEval(BaseEval):
     ) -> None:
         """Initialize with configuration.
             Args:
-                config: Configuration for toxicity detection. 
+                client: LLM provider client (OpenAI, Gemini, Anthropic, etc.).
+                model: Model name to use for hallucination detection.
+                config: Optional configuration for evaluation behavior.
+                temperature: Temperature for the judge LLM (overrides config).
+                max_tokens: Maximum tokens for judge response. 
             """
         super().__init__(config)
         self.config: ToxicityDetectionConfig = self.config
@@ -167,18 +171,9 @@ class ToxicityDetectionEval(BaseEval):
         # Use provided text or default to model output
         if text is None:
             text = eval_input.model_output
-
-        # Build the context section only if enabled + context exists
-        context_section = ""
-        if eval_input.context:
-            formatted_ctx = self._format_context(eval_input.context)
-            if formatted_ctx:
-                context_section = f"## Additional Context:\n{formatted_ctx}\n"
-
         # Construct final prompt
         prompt = TOXICITY_JUDGE_PROMPT.format(
             text=text,
-            context=context_section
         )
 
         return prompt
@@ -190,7 +185,7 @@ class ToxicityDetectionEval(BaseEval):
     
         parts = []
 
-    # Handle common context keys
+        # Handle common context keys
         if "documents" in context:
             docs = context["documents"]
             if isinstance(docs, list):

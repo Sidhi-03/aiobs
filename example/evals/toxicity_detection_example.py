@@ -1,7 +1,7 @@
 """Example of using ToxicityDetectionEval to detect toxic content in LLM outputs."""
 
 from openai import OpenAI
-from aiobs.evals import ToxicityDetectionEval, EvalInput
+from aiobs.evals import ToxicityDetectionEval, EvalInput, ToxicityDetectionConfig
 
 # Initialize the OpenAI client
 client = OpenAI()
