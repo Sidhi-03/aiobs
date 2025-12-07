@@ -29,6 +29,7 @@ Available Evaluators:
     - HallucinationDetectionEval: Detect hallucinations using LLM-as-judge
     - LatencyConsistencyEval: Check latency statistics
     - PIIDetectionEval: Detect personally identifiable information
+    - JailbreakDetectionEval: Detect jailbreak attempts using LLM-as-judge
 """
 
 from __future__ import annotations
@@ -53,6 +54,7 @@ from .models import (
     PIIType,
     HallucinationDetectionConfig,
     SQLQueryValidatorConfig,
+    JailbreakDetectionConfig,
 )
 
 # Correctness evaluators
@@ -72,6 +74,7 @@ from .reliability import (
 # Safety evaluators
 from .safety import (
     PIIDetectionEval,
+    JailbreakDetectionEval,
 )
 
 __all__ = [
@@ -93,6 +96,7 @@ __all__ = [
     "PIIType",
     "HallucinationDetectionConfig",
     "SQLQueryValidatorConfig",
+    "JailbreakDetectionConfig",
     # Correctness evaluators
     "RegexAssertion",
     "SchemaAssertion",
@@ -103,5 +107,6 @@ __all__ = [
     "LatencyConsistencyEval",
     # Safety evaluators
     "PIIDetectionEval",
+    "JailbreakDetectionEval",
 ]
 

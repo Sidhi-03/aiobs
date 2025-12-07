@@ -15,6 +15,7 @@ from .configs import (
     PIIType,
     HallucinationDetectionConfig,
     SQLQueryValidatorConfig,
+    JailbreakDetectionConfig,
 )
 
 __all__ = [
@@ -34,5 +35,6 @@ __all__ = [
     "PIIType",
     "HallucinationDetectionConfig",
     "SQLQueryValidatorConfig",
+    "JailbreakDetectionConfig",
 ]
 

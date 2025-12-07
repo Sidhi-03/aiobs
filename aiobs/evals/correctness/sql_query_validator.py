@@ -119,7 +119,7 @@ class SQLQueryValidator(BaseEval):
                     score=0.0,
                     eval_name=self.eval_name,
                     message="Invalid SQL: Parser returned None",
-                    assertions=assertions,
+                    assertions=assertions if self.config.include_details else None,
                 )
             
             # Successfully parsed
@@ -137,7 +137,7 @@ class SQLQueryValidator(BaseEval):
                 score=1.0,
                 eval_name=self.eval_name,
                 message=f"Valid SQL query{dialect_info}",
-                assertions=assertions,
+                assertions=assertions if self.config.include_details else None,
             )
             
         except ParseError as e:
@@ -155,7 +155,7 @@ class SQLQueryValidator(BaseEval):
                 score=0.0,
                 eval_name=self.eval_name,
                 message=f"Invalid SQL: {error_msg}",
-                assertions=assertions,
+                assertions=assertions if self.config.include_details else None,
             )
         except Exception as e:
             # Unexpected error during parsing
@@ -172,5 +172,5 @@ class SQLQueryValidator(BaseEval):
                 score=0.0,
                 eval_name=self.eval_name,
                 message=error_msg,
-                assertions=assertions,
+                assertions=assertions if self.config.include_details else None,
             )

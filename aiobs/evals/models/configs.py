@@ -264,3 +264,40 @@ class SQLQueryValidatorConfig(BaseEvalConfig):
                     "If None, uses default sqlglot parsing."
     )
 
+class JailbreakDetectionConfig(BaseEvalConfig):
+    """Configuration for jailbreak detection evaluation.
+    
+    Uses an LLM-as-judge approach to detect when a model has been
+    successfully jailbroken or bypassed safety guardrails.
+    """
+    
+    model: Optional[str] = Field(
+        default=None,
+        description="Model name for the judge LLM (for logging purposes)"
+    )
+    temperature: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=2.0,
+        description="Temperature for the judge LLM (lower = more deterministic)"
+    )
+    safety_threshold: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Score threshold above which output is considered safe (0-1)"
+    )
+    strict: bool = Field(
+        default=False,
+        description="If True, any violation results in failure"
+    )
+    check_system_prompt: bool = Field(
+        default=True,
+        description="Include system prompt in analysis"
+    )
+    max_violations: int = Field(
+        default=10,
+        ge=1,
+        description="Maximum number of violations to extract and report"
+    )
+
