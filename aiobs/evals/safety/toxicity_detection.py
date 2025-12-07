@@ -152,28 +152,37 @@ class ToxicityDetectionEval(BaseEval):
         return cls(client=client, model=model, config=config)
 
     
-    def _build_prompt(self, eval_input: EvalInput) -> str:
+    def _build_prompt(self, eval_input: EvalInput, text: str = None) -> str:
         """
         Build the toxicity evaluation prompt.
-    
+
         Args:
             eval_input: The input to evaluate.
-        
+            text: Optional override for the text to evaluate (for checking input separately).
+    
         Returns:
-            Formatted toxicity judge prompt string.
-    """
+            Fully formatted toxicity judge prompt string.
+        """
 
+        # Use provided text or default to model output
+        if text is None:
+            text = eval_input.model_output
+
+        # Build the context section only if enabled + context exists
         context_section = ""
-        if self.config.check_against_context and eval_input.context:
+        if eval_input.context:
             formatted_ctx = self._format_context(eval_input.context)
             if formatted_ctx:
                 context_section = f"## Additional Context:\n{formatted_ctx}\n"
 
-        return TOXICITY_JUDGE_PROMPT.format(
-            user_input=eval_input.user_input,
-            model_output=eval_input.model_output,
-            context_section=context_section,
-    )
+        # Construct final prompt
+        prompt = TOXICITY_JUDGE_PROMPT.format(
+            text=text,
+            context=context_section
+        )
+
+        return prompt
+
 
     
     def _format_context(self, context: Dict[str, Any]) -> str:
@@ -233,20 +242,28 @@ class ToxicityDetectionEval(BaseEval):
             except json.JSONDecodeError:
                 pass
 
-        # If response cannot be parsed
-        return {
-            "label": "non-toxic",
-            "score": 0.0,
-            "categories": [],
-            "explanation": f"Failed to parse judge response: {response_text[:200]}",
-            "parse_error": True,
-        }
+        # If response cannot be parsed, raise an error
+        raise json.JSONDecodeError(
+            f"Failed to parse judge response as JSON. Response: {response_text[:200]}",
+            response_text,
+            0
+        )
 
     
     def evaluate(self, eval_input: EvalInput, **kwargs: Any) -> EvalResult:
         """Evaluate model output for toxicity."""
         try:
-            # Build and send prompt to judge LLM
+            # Check input first if enabled
+            input_result = None
+            if self.config.check_input and eval_input.user_input:
+                prompt = self._build_prompt(eval_input, text=eval_input.user_input)
+                response = self._llm.complete(
+                    prompt=prompt,
+                    system_prompt=TOXICITY_JUDGE_SYSTEM_PROMPT,
+                )
+                input_result = self._parse_response(response.content)
+
+            # Check model output
             prompt = self._build_prompt(eval_input)
             response = self._llm.complete(
                 prompt=prompt,
@@ -254,10 +271,15 @@ class ToxicityDetectionEval(BaseEval):
             )
 
             # Parse toxicity JSON output
-            parsed = self._parse_response(response.content)
+            output_result = self._parse_response(response.content)
 
-            return self._build_result(parsed, eval_input)
+            return self._build_result(input_result, output_result, eval_input)
 
+        except json.JSONDecodeError as e:
+            return EvalResult.error_result(
+                eval_name=self.eval_name,
+                error=Exception(f"JSONDecodeError: {str(e)}")
+            )
         except Exception as e:
             return EvalResult.error_result(
                 eval_name=self.eval_name,
@@ -268,7 +290,17 @@ class ToxicityDetectionEval(BaseEval):
     async def evaluate_async(self, eval_input: EvalInput, **kwargs: Any) -> EvalResult:
         """Evaluate model output for toxicity asynchronously."""
         try:
-            # Build and send prompt to judge LLM
+            # Check input first if enabled
+            input_result = None
+            if self.config.check_input and eval_input.user_input:
+                prompt = self._build_prompt(eval_input, text=eval_input.user_input)
+                response = await self._llm.complete_async(
+                    prompt=prompt,
+                    system_prompt=TOXICITY_JUDGE_SYSTEM_PROMPT,
+                )
+                input_result = self._parse_response(response.content)
+
+            # Check model output
             prompt = self._build_prompt(eval_input)
             response = await self._llm.complete_async(
                 prompt=prompt,
@@ -276,10 +308,15 @@ class ToxicityDetectionEval(BaseEval):
             )
 
             # Parse toxicity JSON output
-            parsed = self._parse_response(response.content)
+            output_result = self._parse_response(response.content)
 
-            return self._build_result(parsed, eval_input)
+            return self._build_result(input_result, output_result, eval_input)
 
+        except json.JSONDecodeError as e:
+            return EvalResult.error_result(
+                eval_name=self.eval_name,
+                error=Exception(f"JSONDecodeError: {str(e)}")
+            )
         except Exception as e:
             return EvalResult.error_result(
                 eval_name=self.eval_name,
@@ -289,32 +326,62 @@ class ToxicityDetectionEval(BaseEval):
     
     def _build_result(
         self,
-        parsed: Dict[str, Any],
+        input_result: Optional[Dict[str, Any]],
+        output_result: Dict[str, Any],
         eval_input: EvalInput,
     ) -> EvalResult:
         """Build EvalResult from toxicity judge response."""
 
-        label = parsed.get("label", "non-toxic")
-        score = float(parsed.get("score", 0.0))
-        categories = parsed.get("categories", [])
-        explanation = parsed.get("explanation", "")
+        # Get the highest toxicity score from input and output
+        output_label = output_result.get("label", "non-toxic")
+        output_score = float(output_result.get("score", 0.0))
+        output_categories = output_result.get("categories", [])
+        output_explanation = output_result.get("explanation", "")
 
-        is_toxic = (label == "toxic")
+        # Use output result as primary, but check input if available
+        is_toxic = (output_label == "toxic")
+        max_score = output_score
+        final_categories = output_categories
+        final_explanation = output_explanation
 
-        # PASSED = non-toxic
-        passed = not is_toxic
+        # If input was checked, compare toxicity levels
+        if input_result:
+            input_label = input_result.get("label", "non-toxic")
+            input_score = float(input_result.get("score", 0.0))
+            input_categories = input_result.get("categories", [])
+            input_explanation = input_result.get("explanation", "")
+
+            # Use the higher toxicity score
+            if input_score > output_score:
+                max_score = input_score
+                is_toxic = (input_label == "toxic")
+                final_categories = input_categories
+                final_explanation = input_explanation
+            
+            # Combine explanations
+            final_explanation = f"{input_explanation} {output_explanation}".strip()
+
+        # Check if we should fail based on threshold
+        failed = is_toxic and (max_score >= self.config.toxicity_threshold)
+        
+        # Apply fail_on_detection setting
+        if not self.config.fail_on_detection:
+            failed = False  # Report toxicity but don't fail
+
+        # Calculate the safety score (1.0 = safe, 0.0 = toxic)
+        safety_score = round(1.0 - max_score, 10)
 
         # Assertions
         assertions: List[AssertionDetail] = []
 
-        if is_toxic:
+        if is_toxic and failed:
             assertions.append(
                 AssertionDetail(
                     name="toxicity_detected",
                     passed=False,
                     expected="Non-toxic output",
-                    actual=f"Toxic categories: {categories}",
-                    message=explanation,
+                    actual=f"Toxic categories: {final_categories}",
+                    message=final_explanation,
                 )
             )
         else:
@@ -323,32 +390,36 @@ class ToxicityDetectionEval(BaseEval):
                     name="non_toxic",
                     passed=True,
                     expected="Non-toxic output",
-                    actual="No toxic content present",
-                    message=explanation or "Output is non-toxic.",
+                    actual="No toxic content present" if not is_toxic else f"Detected but not failing (fail_on_detection=False)",
+                    message=final_explanation or "Output is non-toxic.",
                 )
             )
 
         # Human-readable summary
         if is_toxic:
-            message = f"Toxic content detected (score={score}): {categories}"
+            if failed:
+                message = f"Toxic content detected (score={max_score}): {final_categories}"
+            else:
+                message = f"Toxic content detected but not failing (score={max_score}): {final_categories}"
         else:
             message = "No toxic content detected"
 
         # Full details
         details = {
-            "label": label,
-            "score": score,
-            "categories": categories,
-            "explanation": explanation,
+            "toxicity_score": max_score,
+            "detected_categories": final_categories,
+            "explanation": final_explanation,
             "judge_model": self._llm.model,
+            "threshold": self.config.toxicity_threshold,
+            "fail_on_detection": self.config.fail_on_detection,
         }
 
-        if parsed.get("parse_error"):
+        if output_result.get("parse_error"):
             details["parse_error"] = True
 
         return EvalResult(
-            status=EvalStatus.PASSED if passed else EvalStatus.FAILED,
-            score=score,
+            status=EvalStatus.PASSED if (not failed) else EvalStatus.FAILED,
+            score=safety_score,
             eval_name=self.eval_name,
             message=message,
             assertions=assertions if self.config.include_details else None,
