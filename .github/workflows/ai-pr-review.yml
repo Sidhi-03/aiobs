@@ -1,7 +1,9 @@
 name: Cursor Code Review
 
 on:
-  pull_request:
+  # Use pull_request_target to allow secrets access for fork PRs
+  # This is SAFE because we only read the diff via gh CLI, not execute PR code
+  pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
@@ -16,11 +18,13 @@ jobs:
     if: github.event.pull_request.draft == false
 
     steps:
-      - name: Checkout repository
+      # SECURITY: Checkout BASE branch only, NOT the PR head
+      # We review the diff via gh CLI, not by running PR code
+      - name: Checkout base repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.base.sha }}
 
       - name: Install Cursor CLI
         run: |
