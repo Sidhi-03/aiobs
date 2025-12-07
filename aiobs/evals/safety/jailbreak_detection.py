@@ -105,7 +105,7 @@ class JailbreakDetectionEval(BaseEval):
         self._llm: BaseLLM = LLM.from_client(
             client=client,
             model=model,
-            temperature=temperature or self.config.temperature,
+            temperature=temperature if temperature is not None else self.config.temperature,
             max_tokens=max_tokens,
         )
         

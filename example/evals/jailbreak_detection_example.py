@@ -112,7 +112,8 @@ def main():
     print(f"Status: {result5.status}")
     print(f"Score: {result5.score}")
     print(f"Message: {result5.message}")
-    print(f"Analysis: {result5.details.get('analysis', 'N/A')}")
+    if result5.details:
+        print(f"Analysis: {result5.details.get('analysis', 'N/A')}")
 
     # Example 6: Custom safety threshold
     print("\n--- Example 6: Custom Safety Threshold ---")
