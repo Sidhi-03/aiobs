@@ -157,7 +157,7 @@ class ToxicityDetectionEval(BaseEval):
         return cls(client=client, model=model, config=config)
 
     
-    def _build_prompt(self, eval_input: EvalInput, text: str = None) -> str:
+    def _build_prompt(self, eval_input: EvalInput, text: Optional[str] = None) -> str:
         """Build the toxicity evaluation prompt.
 
         Args:

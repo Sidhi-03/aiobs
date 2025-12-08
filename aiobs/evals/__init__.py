@@ -55,6 +55,7 @@ from .models import (
     HallucinationDetectionConfig,
     SQLQueryValidatorConfig,
     JailbreakDetectionConfig,
+    ToxicityDetectionConfig,
 )
 
 # Correctness evaluators
@@ -77,7 +78,6 @@ from .safety import (
     JailbreakDetectionEval,
 )
 from .safety.toxicity_detection import ToxicityDetectionEval
-from .models.configs import ToxicityDetectionConfig
 
 
 __all__ = [
