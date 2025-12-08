@@ -446,3 +446,8 @@ Docs auto-deploy via GitHub Actions: [aiobs-docs](https://neuralis-in.github.io/
 ## Community & Support
 
 Join the Zulip community for discussions, help, and feature requests: [aiobs-zulip-chat](https://aiobs.zulipchat.com/)
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=neuralis-in/aiobs&type=Date)](https://star-history.com/#neuralis-in/aiobs&Date)
+
